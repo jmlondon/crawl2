@@ -7,7 +7,7 @@
 <!-- badges: end -->
 
 After 10+ years, the code base for the R package
-[{`crawl`}](https://github/com/NMML/crawl) is showing its age. With that
+[{`crawl`}](https://github.com/NMML/crawl) is showing its age. With that
 in mind, Devin Johnson ([dsjohnson](https://github.com/dsjohnson)) and I
 are planning to devote some of our time over the next months fleshing
 out our ideas for {`crawl2`}.
