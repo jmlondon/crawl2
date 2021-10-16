@@ -45,7 +45,7 @@ preprocessor <-
            vmax = 5,
            ang = c(15,25),
            distlim = c(2500, 5000),
-           spdf = TRUE,
+           speed_filter = TRUE,
            min.dt = 60
            ) {
 
@@ -56,12 +56,10 @@ preprocessor <-
                 msg = "ang must be either a vector of c(min, max) angles in degrees defining extreme steps to be removed from trajectory, or NA")
     assert_that(any((is.numeric(distlim) & length(distlim) == 2) || is.na(distlim)),
                 msg = "distlim must be either a vector of c(min, max) in m defining distances of extreme steps to be removed from trajectory, or NA")
-    assert_that(is.logical(spdf),
-                msg = "spdf must either TRUE to turn on, or FALSE to turn off speed filtering")
+    assert_that(is.logical(speed_filter),
+                msg = "speed_filter must either TRUE to turn on, or FALSE to turn off speed filtering")
     assert_that(is.numeric(min.dt) & min.dt >= 0,
                 msg = "min.dt must be a positive, numeric value representing the minimum time difference between observed locations in s")
-    assert_that(any(is.null(emf) || (is.data.frame(emf) & nrow(emf) > 0)),
-                msg = "emf must be either NULL to use default emf (type emf() to see values), or a data.frame (see ?emf for details")
 
   d <- data
 
@@ -104,7 +102,7 @@ preprocessor <-
   if(!is.null(d$id)) d <- d %>% mutate(id = as.character(id))
 
   ## add KF error columns, if missing
-  if((ncol(d) %in% c(4,5,7) & !inherits(d, "sf")) | (ncol(d) == 6 & inherits(d, "sf"))) {
+  if((ncol(d) %in% c(4,5,7) & !inherits(d, "sf")) | (ncol(d) %in% c(4,6) & inherits(d, "sf"))) {
     d <- d %>%
       mutate(smaj = NA, smin = NA, eor = NA)
   }
@@ -145,7 +143,7 @@ preprocessor <-
            laterr = laterr * 6366.71 / 180 * pi) # convert from lon/lat to km (crude)
 
   ## Use trip::sda to identify outlier locations
-  if (spdf) {
+  if (speed_filter) {
     if(inherits(d, "sf") && st_is_longlat(d)) {
 
       xy <- st_coordinates(d) %>%
@@ -216,27 +214,19 @@ preprocessor <-
   }
 
   if(!inherits(d, "sf")) {
-    ##  if lon spans -180,180 then shift to
-    ##    0,360; else if lon spans 360,0 then shift to
-    ##    -180,180 ... have to do this on keep subset only
     dd <- subset(d, keep)
 
-    ## build user-specified projection
-    mlon <- mean(dd$lon) %>% round(., 2)
+    ## projection not provided by user so presume geographic
+    sf_locs <- st_as_sf(d, coords = c("lon", "lat"),
+                        crs = st_crs(4326))
 
-    ## projection not provided by user so guess at best projection
-    sf_locs <- st_as_sf(d, coords = c("lon", "lat"), crs = st_crs("+proj=longlat +datum=WGS84 +no_defs"))
+    ## check if longlat
+    assert_that(sf::st_is_longlat(sf_locs),
+                msg = "coordinates must be geographic (longitude and latitude). For non-geographic, convert to `sf` object with projection defined.")
 
-    if (any(diff(wrap_lon(dd$lon, 0)) > 300)) {
-      prj <- "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=km +no_defs"
-    } else if (any(diff(wrap_lon(dd$lon,-180)) < -300) ||
-               any(diff(wrap_lon(dd$lon,-180)) > 300)) {
-      prj <- "+proj=merc +lon_0=180 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=km +no_defs"
-    } else {
-      prj <- "+proj=merc +lon_0=0 +k=1 +x_0=0 +y_0=0 +datum=WGS84 +units=km +no_defs"
-    }
-
-    sf_locs <- sf_locs %>% st_transform(., st_crs(prj))
+    ## convert geographic to custom equidistant
+    prj_crs <- sf_locs %>% custom_equidistant()
+    sf_locs <- sf_locs %>% st_transform(., st_crs(prj_crs))
 
   } else {
     prj <- st_crs(d)
