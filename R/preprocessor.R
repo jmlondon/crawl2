@@ -9,13 +9,14 @@
 ##' 3. orders observations in time;
 ##' 4. removes duplicate observations;
 ##' 5. removes observations occurring within 60 s of one another (keeps first);
-##' 6. if needed, projects longlat coordinatess to a user specified CRS
-##' (if not specified, redirect user to [crsuggests] package);
+##' 6. if needed, projects longlat coordinatess to an equidistant CRS cenetered
+##' on the locations (if not specified, redirect user to [crsuggests] package);
 ##' 7. adds default location error values based on published Argos specifications for  location
 ##' class (for type LS);
 ##' 8. uses a [trip::sda] to identify potential outlier locations.
 ##' [trip::sda] is a fast, vectorized version of [argosfilter::sdafilter]
 ##' see `?argosfilter::sdafilter` for details on implementation
+##' 9. integrates any user provided time-varying covariates
 ##'
 ##' @details called by `crw_fit`.
 ##'
@@ -25,6 +26,7 @@
 ##' @param distlim lengths of outlier location "spikes" (default is `c(2500, 5000)` m); `distlim = NA` turns off `trip::sda` filter in favor of `trip::speedfilter`. Either `ang = NA` or `distlim = NA` are sufficient.
 ##' @param speed_filter turn speed filter on/off (logical; default is TRUE)
 ##' @param min.dt minimum allowable time difference in s between observations; \code{dt < min.dt} will be ignored by the SSM
+##' @param time_cov a tibble of time varying covariates (must include a date column of POSIXct and at least one covariate column)
 ##' @importFrom lubridate ymd_hms
 ##' @importFrom dplyr mutate arrange select left_join lag rename "%>%" everything
 ##' @importFrom sf st_as_sf st_set_crs st_transform st_is_longlat st_crs
@@ -46,7 +48,8 @@ preprocessor <-
            ang = c(15,25),
            distlim = c(2500, 5000),
            speed_filter = TRUE,
-           min.dt = 60
+           min.dt = 60,
+           time_cov = NULL
            ) {
 
     ## check args
@@ -234,15 +237,7 @@ preprocessor <-
       d <- d %>% st_transform(., st_crs(prj_crs))
     }
 
-
-    # if data CRS units are m then change to km, otherwise optimiser may choke
-    # if (str_detect(prj$input, "units=m")) {
-    #   prj$input <-
-    #     str_replace(prj$input, "units=m", "units=km")
-    # }
-    sf_locs <- d %>%
-      select(-lon,-lat) %>%
-      st_transform(st_crs(prj))
+    sf_locs <- d
   }
 
   out <- sf_locs %>%
