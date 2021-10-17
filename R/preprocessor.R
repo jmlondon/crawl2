@@ -213,42 +213,37 @@ preprocessor <-
     d[d$keep, "keep"] <- tmp
   }
 
+  d <- subset(d, keep)
+
   if(!inherits(d, "sf")) {
-    dd <- subset(d, keep)
 
     ## projection not provided by user so presume geographic
     sf_locs <- st_as_sf(d, coords = c("lon", "lat"),
                         crs = st_crs(4326))
 
-    ## check if longlat
-    assert_that(sf::st_is_longlat(sf_locs),
-                msg = "coordinates must be geographic (longitude and latitude). For non-geographic, convert to `sf` object with projection defined.")
-
     ## convert geographic to custom equidistant
-    prj_crs <- sf_locs %>% custom_equidistant()
+    prj_crs <- sf_locs %>% crs_equidistant()
     sf_locs <- sf_locs %>% st_transform(., st_crs(prj_crs))
 
   } else {
-    prj <- st_crs(d)
-    # if data CRS units are m then change to km, otherwise optimiser may choke
-    if (str_detect(prj$input, "units=m")) {
-      prj$input <-
-        str_replace(prj$input, "units=m", "units=km")
+    ## check if longlat
+    assert_that(sf::st_is_longlat(sf_locs),
+                msg = "geographic projection detected. will convert to equidistant projection centered on data")
+    if(sf::st_is_longlat(d)) {
+      prj_crs <- d %>% crs_equidistant()
+      d <- d %>% st_transform(., st_crs(prj_crs))
     }
+
+
+    # if data CRS units are m then change to km, otherwise optimiser may choke
+    # if (str_detect(prj$input, "units=m")) {
+    #   prj$input <-
+    #     str_replace(prj$input, "units=m", "units=km")
+    # }
     sf_locs <- d %>%
       select(-lon,-lat) %>%
       st_transform(st_crs(prj))
   }
-
-  ## add LS error info to corresponding records
-  ## set emf's = NA if obs.type %in% c("KF","GL") - not essential but for clarity
-  if(is.null(emf)) {
-      tmp <- emf()
-  } else if(is.data.frame(emf)) {
-      tmp <- emf
-  } else {
-      stop("\n supplied emf must be a data.frame. see `?prefilter`")
-    }
 
   out <- sf_locs %>%
     mutate(lc = as.character(lc)) %>%
