@@ -46,7 +46,7 @@ preprocessor <-
            ang = c(15,25),
            distlim = c(2500, 5000),
            speed_filter = TRUE,
-           min.dt = 60
+           min.dt = 0.9
            ) {
 
     ## check args
@@ -228,7 +228,7 @@ preprocessor <-
   } else {
     ## check if longlat
     assert_that(sf::st_is_longlat(sf_locs),
-                msg = "geographic projection detected. will convert to equidistant projection centered on data")
+                msg = "geographic projection not detected. will convert to equidistant projection centered on data")
     if(sf::st_is_longlat(d)) {
       prj_crs <- d %>% crs_equidistant()
       d <- d %>% st_transform(., st_crs(prj_crs))
