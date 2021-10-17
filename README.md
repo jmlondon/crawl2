@@ -23,3 +23,15 @@ have used other approaches for modeling animal movement
 Please take a moment to [Create an
 Issue](https://github.com/jmlondon/crawl2/issues) and share your ideas
 for improvements, feature requests, new directions, etc.
+
+### Disclaimer
+
+*This software package is developed and maintained by scientists at the
+NOAA Fisheries Alaska Fisheries Science Center and should be considered
+a fundamental research communication. The reccomendations and
+conclusions presented here are those of the authors and this software
+should not be construed as official communication by NMFS, NOAA, or the
+U.S. Dept. of Commerce. In addition, reference to trade names does not
+imply endorsement by the National Marine Fisheries Service, NOAA. While
+the best efforts have been made to insure the highest quality, tools
+such as this are under constant development and are subject to change.*
